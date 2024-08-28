@@ -1,6 +1,6 @@
-#include "Logger.h"
-#include "FileStream.h"
-#include "ConsoleStream.h"
+#include <console_stream.hpp>
+#include <logger.hpp>
+#include <file_stream.hpp>
 
 int main() {
     Logger logger("{timestamp:%Y-%m-%d %H:%M:%S} <{level}> {message}", LogLevel::TRACE);

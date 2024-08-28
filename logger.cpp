@@ -1,8 +1,8 @@
-#include "Logger.h"
-#include "fmt/core.h"
+#include "logger.hpp"
 #include <chrono>
-#include <fmt/format.h>
 #include <fmt/chrono.h>
+#include <fmt/core.h>
+#include <fmt/format.h>
 
 Logger::Logger(std::string format, LogLevel minLevel) 
     : m_format(std::move(format)), m_minLevel(minLevel) {

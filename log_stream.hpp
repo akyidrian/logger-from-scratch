@@ -1,6 +1,6 @@
 #pragma once
-#include <string>
 #include <atomic>
+#include <string>
 
 enum class LogLevel {
     TRACE,

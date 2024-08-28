@@ -1,15 +1,15 @@
 #pragma once
-#include "LogStream.h"
-#include <string>
-#include <vector>
-#include <memory>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
-#include <thread>
+#include "log_stream.hpp"
 #include <atomic>
+#include <condition_variable>
 #include <fmt/format.h>
 #include <fmt/chrono.h>
+#include <queue>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 class Logger {
 public:

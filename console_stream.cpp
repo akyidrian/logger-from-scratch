@@ -1,4 +1,4 @@
-#include "ConsoleStream.h"
+#include "console_stream.hpp"
 #include <iostream>
 
 void ConsoleStream::write(LogLevel level, const std::string& message) {

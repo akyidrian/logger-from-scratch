@@ -1,4 +1,4 @@
-#include "FileStream.h"
+#include "file_stream.hpp"
 
 FileStream::FileStream(const std::string& filename, LogLevel level) 
     : LogStream(level), m_file(filename, std::ios::app) {}

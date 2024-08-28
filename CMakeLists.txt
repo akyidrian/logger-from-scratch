@@ -18,7 +18,7 @@ FetchContent_Declare(
   GIT_TAG 11.0.2)
 FetchContent_MakeAvailable(fmt)
 
-add_library(logger STATIC Logger.cpp FileStream.cpp ConsoleStream.cpp)
+add_library(logger STATIC logger.cpp file_stream.cpp console_stream.cpp)
 target_include_directories(logger PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(logger PUBLIC fmt::fmt)
 

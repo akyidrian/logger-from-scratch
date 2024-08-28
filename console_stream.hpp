@@ -1,5 +1,5 @@
 #pragma once
-#include "LogStream.h"
+#include "log_stream.hpp"
 #include <iostream>
 
 class ConsoleStream : public LogStream {
