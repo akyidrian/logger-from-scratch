@@ -1,4 +1,5 @@
 #include "Logger.h"
+#include "fmt/core.h"
 #include <chrono>
 #include <fmt/format.h>
 #include <fmt/chrono.h>
@@ -17,16 +18,14 @@ Logger::~Logger() {
 }
 
 void Logger::addStream(std::unique_ptr<LogStream> stream) {
-    std::lock_guard<std::mutex> lock(m_mutex);
     m_streams.push_back(std::move(stream));
 }
 
 void Logger::setFormat(const std::string& format) {
-    std::lock_guard<std::mutex> lock(m_mutex);
     m_format = format;
 }
 
-void Logger::setLogLevel(LogLevel level) {  // Renamed from setMinLogLevel
+void Logger::setLogLevel(LogLevel level) {
     m_minLevel = level;
 }
 
@@ -45,11 +44,12 @@ void Logger::processEntries() {
 
             std::string formatted_message = formatMessage(level, message);
 
+            // Release the lock while writing to streams
+            lock.unlock();
             for (const auto& stream : m_streams) {
-                if (level >= stream->getLogLevel()) {
-                    stream->write(formatted_message);
-                }
+                stream->write(level, formatted_message);
             }
+            lock.lock();
         }
     }
 }
@@ -68,7 +68,7 @@ const char* Logger::levelToString(LogLevel level) {
 
 std::string Logger::formatMessage(LogLevel level, const std::string& message) {
     auto now = std::chrono::system_clock::now();
-    return fmt::format(m_format,
+    return fmt::format(fmt::runtime(m_format),
         fmt::arg("timestamp", now),
         fmt::arg("level", levelToString(level)),
         fmt::arg("message", message)

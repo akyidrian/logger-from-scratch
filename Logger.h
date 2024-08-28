@@ -53,7 +53,17 @@ public:
     }
     
     void setFormat(const std::string& format);
-    void setLogLevel(LogLevel level);  // Renamed from setMinLogLevel
+    void setLogLevel(LogLevel level);
+
+    // Add this method to the public section of the Logger class
+    LogStream* getStream(size_t index) {
+        if (index < m_streams.size()) {
+            return m_streams[index].get();
+        }
+        return nullptr;
+    }
+
+    bool shouldLog(LogLevel level) const;
 
 private:
     std::vector<std::unique_ptr<LogStream>> m_streams;
@@ -68,7 +78,6 @@ private:
     static const char* levelToString(LogLevel level);
     void processEntries();
     std::string formatMessage(LogLevel level, const std::string& message);
-    bool shouldLog(LogLevel level) const;
 };
 
 template<typename... Args>

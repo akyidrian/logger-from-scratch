@@ -1,6 +1,8 @@
 #include "ConsoleStream.h"
 #include <iostream>
 
-void ConsoleStream::write(const std::string& message) {
-    std::cout << message << std::endl;
+void ConsoleStream::write(LogLevel level, const std::string& message) {
+    if (level >= getLogLevel()) {
+        std::cout << message << std::endl;
+    }
 }

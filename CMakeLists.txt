@@ -1,38 +1,26 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.22)
 
-project(LoggerProject VERSION 1.0)
+project(logger VERSION 1.0)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+if(NOT UNIX)
+  message(FATAL_ERROR "Linux is the only supported platform")
+endif()
 
-# Add fmt library
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+add_compile_options(-Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic)
+
 include(FetchContent)
 FetchContent_Declare(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG 9.1.0
-)
+  GIT_TAG 11.0.2)
 FetchContent_MakeAvailable(fmt)
 
-# Add the logger library
-add_library(Logger STATIC
-    Logger.cpp
-    FileStream.cpp
-    ConsoleStream.cpp
-)
+add_library(logger STATIC Logger.cpp FileStream.cpp ConsoleStream.cpp)
+target_include_directories(logger PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(logger PUBLIC fmt::fmt)
 
-# Include directories for the library
-target_include_directories(Logger PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-# Link fmt library
-target_link_libraries(Logger PUBLIC fmt::fmt)
-
-# Add the executable
-add_executable(LoggerApp
-    main.cpp
-)
-
-# Link the executable with the logger library
-target_link_libraries(LoggerApp PRIVATE Logger)
+add_executable(logger-app main.cpp)
+target_link_libraries(logger-app PRIVATE logger)

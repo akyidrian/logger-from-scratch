@@ -14,5 +14,19 @@ int main() {
     logger.error("Error message");
     logger.critical("Critical error message");
 
+    // Change log levels
+    logger.setLogLevel(LogLevel::WARNING);
+    if (auto stream = logger.getStream(0)) {
+        stream->setLogLevel(LogLevel::ERROR);
+    }
+    if (auto stream = logger.getStream(1)) {
+        stream->setLogLevel(LogLevel::CRITICAL);
+    }
+
+    logger.info("This won't be logged anywhere");
+    logger.warning("This will only be logged to the console");
+    logger.error("This will be logged to both file and console");
+    logger.critical("This will be logged to both file and console");
+
     return 0;
 }
