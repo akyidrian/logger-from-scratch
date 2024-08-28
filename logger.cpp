@@ -26,7 +26,7 @@ void Logger::addStream(std::unique_ptr<LogStream> stream) {
 void Logger::removeStream(size_t index) {
     std::lock_guard<std::mutex> _(m_streamsMutex);
     if (index < m_streams.size()) {
-        m_streams.erase(m_streams.begin() + index); // FIXME: Vector is inefficient
+        m_streams.erase(m_streams.begin() + index);
     }
 }
 
@@ -56,7 +56,7 @@ void Logger::flushQueue() {
     std::unique_lock<std::mutex> queueLock(m_queueMutex);
     while (!m_queue.empty()) {
         auto [level, message] = m_queue.front();
-        m_queue.pop();
+        m_queue.pop_front();
         {
             std::unique_lock<std::mutex> _(m_streamsMutex);
             for (const auto& stream : m_streams) {
@@ -74,7 +74,7 @@ void Logger::processQueue() {
 
         while (!m_queue.empty()) {
             auto [level, message] = m_queue.front();
-            m_queue.pop();
+            m_queue.pop_front();
             queueLock.unlock();
             {
                 std::unique_lock<std::mutex> _(m_streamsMutex);

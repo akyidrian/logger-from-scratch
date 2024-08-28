@@ -4,7 +4,7 @@
 #include <condition_variable>
 #include <fmt/format.h>
 #include <fmt/chrono.h>
-#include <queue>
+#include <list>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -69,7 +69,7 @@ private:
 
     std::mutex m_queueMutex;
     std::condition_variable m_queueCv;
-    std::queue<std::pair<LogLevel, std::string>> m_queue;
+    std::list<std::pair<LogLevel, std::string>> m_queue;
 
     std::thread m_thread;
 
@@ -88,7 +88,7 @@ void Logger::log(LogLevel level, fmt::format_string<Args...> fmt, Args&&... args
         settingsLock.unlock();
         {
             std::lock_guard<std::mutex> _(m_queueMutex);
-            m_queue.emplace(level, std::move(fmt_message));
+            m_queue.emplace_back(level, std::move(fmt_message));
         }
         m_queueCv.notify_one();
     }
