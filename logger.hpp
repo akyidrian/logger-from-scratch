@@ -20,12 +20,8 @@ public:
     void setLogLevel(LogLevel level);
 
     void addStream(std::unique_ptr<LogStream> stream);
-    LogStream* getStream(size_t index) {
-        if (index < m_streams.size()) {
-            return m_streams[index].get();
-        }
-        return nullptr;
-    }
+    void removeStream(size_t index);
+    LogStream* getStream(size_t index);
 
     template<typename... Args>
     void log(LogLevel level, fmt::format_string<Args...> fmt, Args&&... args);
@@ -61,13 +57,14 @@ public:
     }
 
 private:
-    bool shouldLog(LogLevel level) const;
 
     std::atomic<bool> m_exit{false};
-    std::atomic<LogLevel> m_level;
 
-    std::mutex m_writeMutex;
+    std::mutex m_settingsMutex;
+    LogLevel m_filterLevel;
     std::string m_format;
+
+    std::mutex m_streamsMutex;
     std::vector<std::unique_ptr<LogStream>> m_streams;
 
     std::mutex m_queueMutex;
@@ -77,17 +74,21 @@ private:
     std::thread m_thread;
 
     static const char* levelToString(LogLevel level);
+    std::string formatMessage(LogLevel level, const std::string format, const std::string& message);
+    void flushQueue();
     void processQueue();
-    std::string formatMessage(LogLevel level, const std::string& message);
 };
 
 template<typename... Args>
 void Logger::log(LogLevel level, fmt::format_string<Args...> fmt, Args&&... args) {
-    if (shouldLog(level)) {
+    std::unique_lock<std::mutex> settingsLock(m_settingsMutex);  // Guards m_filterLevel and m_format
+    if (level >= m_filterLevel) {
         std::string message = fmt::format(fmt, std::forward<Args>(args)...);
+        std::string fmt_message = formatMessage(level, m_format, message);
+        settingsLock.unlock();
         {
             std::lock_guard<std::mutex> _(m_queueMutex);
-            m_queue.emplace(level, std::move(message));
+            m_queue.emplace(level, std::move(fmt_message));
         }
         m_queueCv.notify_one();
     }

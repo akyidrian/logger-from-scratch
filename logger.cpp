@@ -5,7 +5,7 @@
 #include <fmt/format.h>
 
 Logger::Logger(LogLevel level, std::string format) 
-    : m_level(level),
+    : m_filterLevel(level),
       m_format(std::move(format)),
       m_thread(&Logger::processQueue, this) {
 }
@@ -19,21 +19,52 @@ Logger::~Logger() {
 }
 
 void Logger::addStream(std::unique_ptr<LogStream> stream) {
-    std::unique_lock<std::mutex> _(m_writeMutex);
+    std::unique_lock<std::mutex> _(m_streamsMutex);
     m_streams.push_back(std::move(stream));
 }
 
-void Logger::setFormat(const std::string& format) {
-    std::unique_lock<std::mutex> _(m_writeMutex);
-    m_format = format;
+void Logger::removeStream(size_t index) {
+    std::lock_guard<std::mutex> _(m_streamsMutex);
+    if (index < m_streams.size()) {
+        m_streams.erase(m_streams.begin() + index); // FIXME: Vector is inefficient
+    }
+}
+
+LogStream* Logger::getStream(size_t index) {
+    std::lock_guard<std::mutex> _(m_streamsMutex);
+    if (index < m_streams.size()) {
+        return m_streams[index].get();
+    }
+    return nullptr;
 }
 
 void Logger::setLogLevel(LogLevel level) {
-    m_level = level;
+    std::unique_lock<std::mutex> _(m_settingsMutex);
+    flushQueue();
+    m_filterLevel = level;
 }
 
-bool Logger::shouldLog(LogLevel level) const {
-    return level >= m_level;
+void Logger::setFormat(const std::string& format) {
+    std::unique_lock<std::mutex> _(m_settingsMutex);
+    flushQueue();
+    m_format = format;
+}
+
+void Logger::flushQueue() {
+    // We lock until the queue is completely flushed
+    // to block any potential new logs being added
+    std::unique_lock<std::mutex> queueLock(m_queueMutex);
+    while (!m_queue.empty()) {
+        auto [level, message] = m_queue.front();
+        m_queue.pop();
+        {
+            std::unique_lock<std::mutex> _(m_streamsMutex);
+            for (const auto& stream : m_streams) {
+                // We assume stream->write() is lightweight...
+                stream->write(level, message);
+            }
+        }
+    }
 }
 
 void Logger::processQueue() {
@@ -46,12 +77,10 @@ void Logger::processQueue() {
             m_queue.pop();
             queueLock.unlock();
             {
-                std::unique_lock<std::mutex> _(m_writeMutex);
-                std::string formatted_message = formatMessage(level, message);
+                std::unique_lock<std::mutex> _(m_streamsMutex);
                 for (const auto& stream : m_streams) {
-                    // We assume stream->write() is lightweight and doesn't
-                    // incur significant wait...
-                    stream->write(level, formatted_message);
+                    // We assume stream->write() is lightweight...
+                    stream->write(level, message);
                 }
             }
             queueLock.lock();
@@ -71,9 +100,9 @@ const char* Logger::levelToString(LogLevel level) {
     }
 }
 
-std::string Logger::formatMessage(LogLevel level, const std::string& message) {
+std::string Logger::formatMessage(LogLevel level, const std::string format, const std::string& message) {
     auto now = std::chrono::system_clock::now();
-    return fmt::format(fmt::runtime(m_format),
+    return fmt::format(fmt::runtime(format),
         fmt::arg("timestamp", now),
         fmt::arg("level", levelToString(level)),
         fmt::arg("message", message)
