@@ -3,18 +3,22 @@
 #include <file_stream.hpp>
 
 int main() {
-    Logger logger("{timestamp:%Y-%m-%d %H:%M:%S} <{level}> {message}", LogLevel::TRACE);
-    logger.addStream(std::make_unique<FileStream>("app.log", LogLevel::DEBUG));
-    logger.addStream(std::make_unique<ConsoleStream>(LogLevel::INFO));
+    Logger logger(LogLevel::TRACE, "{timestamp:%Y-%m-%d %H:%M:%S} <{level}> {message}");
+    logger.addStream(std::make_unique<FileStream>(LogLevel::DEBUG, "log.txt"));
+    logger.addStream(std::make_unique<ConsoleStream>(LogLevel::DEBUG));
 
-    logger.trace("This will only be logged to the file");
-    logger.debug("This will be logged to the file but not to the console");
+    logger.trace("This will not be logged");
+    logger.debug("This will be logged to the file and console");
     logger.info("This will be logged to both file and console");
-    logger.warning("Warning message");
-    logger.error("Error message");
-    logger.critical("Critical error message");
+    logger.warning("This will be logged to both file and console");
+    logger.error("This will be logged to both file and console");
+    logger.critical("This will be logged to both file and console");
 
-    // Change log levels
+    // FIXME: Setting the following doesn't guarentee it won't affect
+    //        earlier log messages. We'd have to force a flush in the
+    //        logger. Arguably, any setLogLevel on the streams should
+    //        take immediate effect.
+    logger.setFormat("{timestamp:%Y-%m-%d %H:%M:%S} [{level}] {message}");
     logger.setLogLevel(LogLevel::WARNING);
     if (auto stream = logger.getStream(0)) {
         stream->setLogLevel(LogLevel::ERROR);
@@ -23,9 +27,12 @@ int main() {
         stream->setLogLevel(LogLevel::CRITICAL);
     }
 
-    logger.info("This won't be logged anywhere");
-    logger.warning("This will only be logged to the console");
-    logger.error("This will be logged to both file and console");
+    logger.trace("This will not be logged");
+    logger.debug("This will not be logged");
+    logger.debug("This will not be logged");
+    logger.info("This will not be logged");
+    logger.warning("This will not be logged");
+    logger.error("This will be logged to file");
     logger.critical("This will be logged to both file and console");
 
     return 0;

@@ -13,15 +13,23 @@
 
 class Logger {
 public:
-    Logger(std::string format = "{timestamp} [{level}] {message}", LogLevel minLevel = LogLevel::TRACE);
+    Logger(LogLevel level = LogLevel::TRACE, std::string format = "{timestamp} [{level}] {message}");
     ~Logger();
 
+    void setFormat(const std::string& format);
+    void setLogLevel(LogLevel level);
+
     void addStream(std::unique_ptr<LogStream> stream);
-    
+    LogStream* getStream(size_t index) {
+        if (index < m_streams.size()) {
+            return m_streams[index].get();
+        }
+        return nullptr;
+    }
+
     template<typename... Args>
     void log(LogLevel level, fmt::format_string<Args...> fmt, Args&&... args);
-    
-    // Convenience methods for each log level
+
     template<typename... Args>
     void trace(fmt::format_string<Args...> fmt, Args&&... args) {
         log(LogLevel::TRACE, fmt, std::forward<Args>(args)...);
@@ -51,32 +59,25 @@ public:
     void critical(fmt::format_string<Args...> fmt, Args&&... args) {
         log(LogLevel::CRITICAL, fmt, std::forward<Args>(args)...);
     }
-    
-    void setFormat(const std::string& format);
-    void setLogLevel(LogLevel level);
-
-    // Add this method to the public section of the Logger class
-    LogStream* getStream(size_t index) {
-        if (index < m_streams.size()) {
-            return m_streams[index].get();
-        }
-        return nullptr;
-    }
-
-    bool shouldLog(LogLevel level) const;
 
 private:
-    std::vector<std::unique_ptr<LogStream>> m_streams;
-    std::queue<std::pair<LogLevel, std::string>> m_queue;  // Changed to store LogLevel and message
-    std::mutex m_mutex;
-    std::condition_variable m_cv;
-    std::thread m_thread;
+    bool shouldLog(LogLevel level) const;
+
     std::atomic<bool> m_exit{false};
+    std::atomic<LogLevel> m_level;
+
+    std::mutex m_writeMutex;
     std::string m_format;
-    std::atomic<LogLevel> m_minLevel;
+    std::vector<std::unique_ptr<LogStream>> m_streams;
+
+    std::mutex m_queueMutex;
+    std::condition_variable m_queueCv;
+    std::queue<std::pair<LogLevel, std::string>> m_queue;
+
+    std::thread m_thread;
 
     static const char* levelToString(LogLevel level);
-    void processEntries();
+    void processQueue();
     std::string formatMessage(LogLevel level, const std::string& message);
 };
 
@@ -85,9 +86,9 @@ void Logger::log(LogLevel level, fmt::format_string<Args...> fmt, Args&&... args
     if (shouldLog(level)) {
         std::string message = fmt::format(fmt, std::forward<Args>(args)...);
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> _(m_queueMutex);
             m_queue.emplace(level, std::move(message));
         }
-        m_cv.notify_one();
+        m_queueCv.notify_one();
     }
 }

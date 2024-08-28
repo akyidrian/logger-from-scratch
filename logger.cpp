@@ -4,52 +4,57 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 
-Logger::Logger(std::string format, LogLevel minLevel) 
-    : m_format(std::move(format)), m_minLevel(minLevel) {
-    m_thread = std::thread(&Logger::processEntries, this);
+Logger::Logger(LogLevel level, std::string format) 
+    : m_level(level),
+      m_format(std::move(format)),
+      m_thread(&Logger::processQueue, this) {
 }
 
 Logger::~Logger() {
     m_exit = true;
-    m_cv.notify_one();
+    m_queueCv.notify_one();
     if (m_thread.joinable()) {
         m_thread.join();
     }
 }
 
 void Logger::addStream(std::unique_ptr<LogStream> stream) {
+    std::unique_lock<std::mutex> _(m_writeMutex);
     m_streams.push_back(std::move(stream));
 }
 
 void Logger::setFormat(const std::string& format) {
+    std::unique_lock<std::mutex> _(m_writeMutex);
     m_format = format;
 }
 
 void Logger::setLogLevel(LogLevel level) {
-    m_minLevel = level;
+    m_level = level;
 }
 
 bool Logger::shouldLog(LogLevel level) const {
-    return level >= m_minLevel;
+    return level >= m_level;
 }
 
-void Logger::processEntries() {
+void Logger::processQueue() {
     while (!m_exit) {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        m_cv.wait(lock, [this] { return !m_queue.empty() || m_exit; });
+        std::unique_lock<std::mutex> queueLock(m_queueMutex);
+        m_queueCv.wait(queueLock, [this] { return !m_queue.empty() || m_exit; });
 
         while (!m_queue.empty()) {
             auto [level, message] = m_queue.front();
             m_queue.pop();
-
-            std::string formatted_message = formatMessage(level, message);
-
-            // Release the lock while writing to streams
-            lock.unlock();
-            for (const auto& stream : m_streams) {
-                stream->write(level, formatted_message);
+            queueLock.unlock();
+            {
+                std::unique_lock<std::mutex> _(m_writeMutex);
+                std::string formatted_message = formatMessage(level, message);
+                for (const auto& stream : m_streams) {
+                    // We assume stream->write() is lightweight and doesn't
+                    // incur significant wait...
+                    stream->write(level, formatted_message);
+                }
             }
-            lock.lock();
+            queueLock.lock();
         }
     }
 }
