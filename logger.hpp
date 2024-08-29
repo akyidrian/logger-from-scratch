@@ -1,4 +1,5 @@
 #pragma once
+#include "console_stream.hpp"
 #include "log_stream.hpp"
 #include <atomic>
 #include <condition_variable>
@@ -78,6 +79,7 @@ private:
     static const char* levelToString(LogLevel level);
     std::string formatMessage(LogLevel level, const std::string format, const std::string& message);
     void flushQueue();
+    void flushToStream(std::unique_ptr<LogStream>& stream);
     void processQueue();
 };
 

@@ -44,7 +44,9 @@ void Logger::addStream(std::unique_ptr<LogStream> stream) {
 void Logger::removeStream(size_t index) {
     std::lock_guard<std::mutex> _(m_streamsMutex);
     if (index < m_streams.size()) {
-        m_streams.erase(m_streams.begin() + index);
+        auto stream = m_streams.begin() + index;
+        flushToStream(*stream);
+        m_streams.erase(stream);
     }
 }
 
@@ -66,6 +68,17 @@ void Logger::setFormat(const std::string& format) {
     std::unique_lock<std::mutex> _(m_settingsMutex);
     flushQueue();
     m_format = format;
+}
+
+// This function is called by removeStream. It assumes the caller
+// has acquired the m_streamMutex.
+void Logger::flushToStream(std::unique_ptr<LogStream>& stream) {
+    // We lock until the queue is completely flushed
+    // to block any potential new logs being added
+    std::unique_lock<std::mutex> queueLock(m_queueMutex);
+    for(auto [level, message] : m_queue) {
+        stream->write(level, message);
+    }
 }
 
 void Logger::flushQueue() {
