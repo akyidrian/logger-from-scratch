@@ -1,13 +1,31 @@
 #include "logger.hpp"
+#include "console_stream.hpp"
 #include <chrono>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
+#include <memory>
+
+using namespace logger;
+
+namespace {
+    static std::shared_ptr<Logger> defaultLogger = std::make_unique<Logger>();
+}; // namespace
+
+std::shared_ptr<Logger> logger::getDefaultLogger() {
+    return defaultLogger;
+}
+
+void logger::setDefaultLogger(std::shared_ptr<Logger> logger)
+{
+    defaultLogger = logger;
+}
 
 Logger::Logger(LogLevel level, std::string format) 
     : m_filterLevel(level),
       m_format(std::move(format)),
       m_thread(&Logger::processQueue, this) {
+    m_streams.emplace_back(std::make_unique<ConsoleStream>());
 }
 
 Logger::~Logger() {

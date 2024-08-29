@@ -1,39 +1,59 @@
 #include <console_stream.hpp>
 #include <logger.hpp>
+#include <log_stream.hpp>
 #include <file_stream.hpp>
+#include <memory>
 
+// FIXME: Allow default stream to be replaced?
 int main() {
-    Logger logger;
-    logger.addStream(std::make_unique<ConsoleStream>(LogLevel::DEBUG));
-    logger.addStream(std::make_unique<FileStream>(LogLevel::DEBUG, "./my-log-file.txt"));
+    logger::trace("trace");
+    logger::debug("debug");
+    logger::info("info");
+    logger::warning("warning");
+    logger::error("error");
+    logger::critical("critical");
+    logger::log(LogLevel::INFO, "====================");
+    logger::setDefaultLogger(std::make_shared<logger::Logger>(LogLevel::INFO, "{message}"));
+    logger::trace("trace");
+    logger::debug("debug");
+    logger::info("info");
+    logger::warning("warning");
+    logger::error("error");
+    logger::critical("critical");
+    logger::log(LogLevel::INFO, "====================");
 
-    logger.trace("This will NOT be logged");
-    logger.debug("This will be logged to BOTH");
-    logger.info("This will be logged to BOTH");
-    logger.warning("This will be logged to BOTH");
-    logger.error("This will be logged to BOTH");
-    logger.critical("This will be logged to BOTH");
+    logger::Logger myLogger;
+    myLogger.addStream(std::make_unique<FileStream>(LogLevel::DEBUG, "./my-log-file.txt"));
 
-    logger.setFormat("<{level}> {timestamp:%H:%M:%S} {message}");
-    logger.setLogLevel(LogLevel::WARNING);
-    if (auto consoleStream = logger.getStream(0)) {
+    myLogger.trace("This will be logged to CONSOLE");
+    myLogger.debug("This will be logged to BOTH");
+    myLogger.info("This will be logged to BOTH");
+    myLogger.warning("This will be logged to BOTH");
+    myLogger.error("This will be logged to BOTH");
+    myLogger.critical("This will be logged to BOTH");
+    myLogger.log(LogLevel::INFO, "====================");
+
+    myLogger.setFormat("<{level}> {timestamp:%H:%M:%S} {message}");
+    myLogger.setLogLevel(LogLevel::WARNING);
+    if (auto consoleStream = myLogger.getStream(0)) {
         consoleStream->setLogLevel(LogLevel::ERROR);
     }
-    if (auto fileStream = logger.getStream(1)) {
+    if (auto fileStream = myLogger.getStream(1)) {
         fileStream->setLogLevel(LogLevel::CRITICAL);
     }
 
-    logger.trace("This will NOT be logged");
-    logger.debug("This will NOT be logged");
-    logger.debug("This will NOT be logged");
-    logger.info("This will NOT be logged");
-    logger.warning("This will NOT be logged");
-    logger.error("This will be logged to CONSOLE");
-    logger.critical("This will be logged to BOTH");
+    myLogger.trace("This will NOT be logged");
+    myLogger.debug("This will NOT be logged");
+    myLogger.debug("This will NOT be logged");
+    myLogger.info("This will NOT be logged");
+    myLogger.warning("This will NOT be logged");
+    myLogger.error("This will be logged to CONSOLE");
+    myLogger.critical("This will be logged to BOTH");
+    myLogger.log(LogLevel::INFO, "====================");
 
-    logger.setFormat("{message}");
-    logger.removeStream(0);
-    logger.critical("This will be logged to FILE");
+    myLogger.setFormat("{message}");
+    myLogger.removeStream(0);
+    myLogger.critical("This will be logged to FILE");
 
     return 0;
 }

@@ -11,6 +11,8 @@
 #include <thread>
 #include <vector>
 
+namespace logger{
+
 class Logger {
 public:
     Logger(LogLevel level = LogLevel::TRACE, std::string format = "{timestamp} [{level}] {message}");
@@ -93,3 +95,42 @@ void Logger::log(LogLevel level, fmt::format_string<Args...> fmt, Args&&... args
         m_queueCv.notify_one();
     }
 }
+
+std::shared_ptr<Logger> getDefaultLogger();
+void setDefaultLogger(std::shared_ptr<Logger> logger);
+
+template<typename... Args>
+void log(LogLevel level, fmt::format_string<Args...> fmt, Args&&... args) {
+    getDefaultLogger()->log(level, fmt, std::forward<Args>(args) ...);
+}
+
+template<typename... Args>
+void trace(fmt::format_string<Args...> fmt, Args&&... args) {
+    log(LogLevel::TRACE, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void debug(fmt::format_string<Args...> fmt, Args&&... args) {
+    log(LogLevel::DEBUG, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void info(fmt::format_string<Args...> fmt, Args&&... args) {
+    log(LogLevel::INFO, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void warning(fmt::format_string<Args...> fmt, Args&&... args) {
+    log(LogLevel::WARNING, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void error(fmt::format_string<Args...> fmt, Args&&... args) {
+    log(LogLevel::ERROR, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+void critical(fmt::format_string<Args...> fmt, Args&&... args) {
+    log(LogLevel::CRITICAL, fmt, std::forward<Args>(args)...);
+}
+}; // namespace logger
